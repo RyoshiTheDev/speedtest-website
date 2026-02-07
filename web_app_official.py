@@ -52,30 +52,46 @@ class NetworkTester:
         return {'latency': 0, 'jitter': 0}
     
     def measure_download(self):
-        """Download test"""
+        """Download test with multiple fallbacks"""
         self.status = "testing_download"
         self.progress = 20
+        
+        # Multiple test file sources
+        test_urls = [
+            'http://speedtest.ftp.otenet.gr/files/test10Mb.db',
+            'http://ipv4.download.thinkbroadband.com/10MB.zip',
+            'http://212.183.159.230/10MB.zip',
+            'https://proof.ovh.net/files/10Mb.dat',
+        ]
         
         try:
             import requests
             
-            url = 'http://speedtest.ftp.otenet.gr/files/test10Mb.db'
-            
-            start = time.time()
-            response = requests.get(url, timeout=30, stream=True)
-            
-            total_size = 0
-            for chunk in response.iter_content(chunk_size=8192):
-                total_size += len(chunk)
-                if time.time() - start > 15:
-                    break
-            
-            elapsed = time.time() - start
-            
-            if elapsed > 0 and total_size > 0:
-                mbps = (total_size * 8) / (elapsed * 1_000_000)
-                self.progress = 50
-                return round(mbps, 2)
+            # Try each URL until one works
+            for url in test_urls:
+                try:
+                    print(f"Trying {url[:50]}...")
+                    
+                    start = time.time()
+                    response = requests.get(url, timeout=30, stream=True)
+                    
+                    total_size = 0
+                    for chunk in response.iter_content(chunk_size=8192):
+                        total_size += len(chunk)
+                        if time.time() - start > 15:
+                            break
+                    
+                    elapsed = time.time() - start
+                    
+                    if elapsed > 0 and total_size > 100000:  # At least 100KB downloaded
+                        mbps = (total_size * 8) / (elapsed * 1_000_000)
+                        print(f"✓ Download: {mbps:.2f} Mbps from {url[:40]}")
+                        self.progress = 50
+                        return round(mbps, 2)
+                    
+                except Exception as e:
+                    print(f"Failed {url[:40]}: {e}")
+                    continue
                 
         except Exception as e:
             print(f"Download error: {e}")
