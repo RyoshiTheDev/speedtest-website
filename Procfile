@@ -1,1 +1,1 @@
-web: bash start.sh
+web: python -m gunicorn web_app_official:app -b 0.0.0.0:5000 -w 1 -t 120
